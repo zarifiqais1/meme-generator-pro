@@ -11,11 +11,10 @@ export default function App() {
   const [fontSize, setFontSize] = useState(30);
   const [fontColor, setFontColor] = useState("#ffffff");
 
-  // DRAG STATE
   const [pos, setPos] = useState({ x: 250, y: 250 });
   const [dragging, setDragging] = useState(false);
 
-  // SAFE LOCALSTORAGE LOAD
+  // SAFE LOCAL STORAGE
   const [gallery, setGallery] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("gallery") || "[]");
@@ -63,7 +62,6 @@ export default function App() {
 
   const randomMeme = () => {
     if (!memes.length) return;
-
     const meme = memes[Math.floor(Math.random() * memes.length)];
     setImg(meme.url);
     draw(meme.url);
@@ -80,7 +78,6 @@ export default function App() {
     link.click();
   };
 
-  // SAVE MEME
   const saveMeme = () => {
     const canvas = canvasRef.current;
     const data = canvas.toDataURL("image/png");
@@ -96,14 +93,12 @@ export default function App() {
     localStorage.setItem("gallery", JSON.stringify(updated));
   };
 
-  // DELETE
   const deleteMeme = (id) => {
     const updated = gallery.filter((item) => item.id !== id);
     setGallery(updated);
     localStorage.setItem("gallery", JSON.stringify(updated));
   };
 
-  // LIKE
   const toggleLike = (id) => {
     const updated = gallery.map((item) =>
       item.id === id ? { ...item, liked: !item.liked } : item,
@@ -113,7 +108,6 @@ export default function App() {
     localStorage.setItem("gallery", JSON.stringify(updated));
   };
 
-  // DRAG
   const handleMouseMove = (e) => {
     if (!dragging) return;
 
@@ -143,7 +137,7 @@ export default function App() {
         />
 
         <input
-          placeholder="Bottom text (drag me!)"
+          placeholder="Bottom text"
           value={bottomText}
           onChange={(e) => setBottomText(e.target.value)}
         />
@@ -151,8 +145,8 @@ export default function App() {
 
       <div>
         <select onChange={() => draw(img)}>
-          <option value="Impact">Impact</option>
-          <option value="Arial">Arial</option>
+          <option>Impact</option>
+          <option>Arial</option>
         </select>
 
         <input
