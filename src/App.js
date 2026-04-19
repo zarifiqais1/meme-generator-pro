@@ -14,7 +14,6 @@ export default function App() {
   const [pos, setPos] = useState({ x: 250, y: 250 });
   const [dragging, setDragging] = useState(false);
 
-  // SAFE LOCAL STORAGE
   const [gallery, setGallery] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("gallery") || "[]");
