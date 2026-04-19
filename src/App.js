@@ -15,17 +15,22 @@ export default function App() {
   const [pos, setPos] = useState({ x: 250, y: 250 });
   const [dragging, setDragging] = useState(false);
 
-  // GALLERY
-  const [gallery, setGallery] = useState(
-    JSON.parse(localStorage.getItem("gallery")) || [],
-  );
+  // SAFE LOCALSTORAGE LOAD
+  const [gallery, setGallery] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("gallery") || "[]");
+    } catch {
+      return [];
+    }
+  });
 
   const canvasRef = useRef(null);
 
   useEffect(() => {
     fetch("https://api.imgflip.com/get_memes")
       .then((res) => res.json())
-      .then((data) => setMemes(data.data.memes));
+      .then((data) => setMemes(data.data.memes))
+      .catch(() => {});
   }, []);
 
   const draw = (imageSrc, top = topText, bottom = bottomText) => {
@@ -108,7 +113,7 @@ export default function App() {
     localStorage.setItem("gallery", JSON.stringify(updated));
   };
 
-  // DRAG FIXED (important)
+  // DRAG
   const handleMouseMove = (e) => {
     if (!dragging) return;
 
@@ -145,7 +150,7 @@ export default function App() {
       </div>
 
       <div>
-        <select onChange={(e) => draw(img)}>
+        <select onChange={() => draw(img)}>
           <option value="Impact">Impact</option>
           <option value="Arial">Arial</option>
         </select>
@@ -161,7 +166,7 @@ export default function App() {
           min="10"
           max="60"
           value={fontSize}
-          onChange={(e) => setFontSize(e.target.value)}
+          onChange={(e) => setFontSize(Number(e.target.value))}
         />
       </div>
 
@@ -186,7 +191,7 @@ export default function App() {
       <div className="gallery">
         {gallery.map((item) => (
           <div key={item.id} className="card">
-            <img src={item.img} width="120" />
+            <img src={item.img} width="120" alt="saved meme" />
 
             <div>
               <button onClick={() => toggleLike(item.id)}>
