@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
 
 export default function App() {
@@ -10,6 +10,7 @@ export default function App() {
 
   const [fontSize, setFontSize] = useState(30);
   const [fontColor, setFontColor] = useState("#ffffff");
+  const [fontFamily, setFontFamily] = useState("Impact");
 
   const [pos, setPos] = useState({ x: 250, y: 250 });
   const [dragging, setDragging] = useState(false);
@@ -31,33 +32,37 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  const draw = (imageSrc, top = topText, bottom = bottomText) => {
-    if (!imageSrc) return;
+  // ✅ SAFE DRAW FUNCTION
+  const draw = useCallback(
+    (imageSrc, top = topText, bottom = bottomText) => {
+      if (!imageSrc || !canvasRef.current) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
 
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.src = imageSrc;
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.src = imageSrc;
 
-    image.onload = () => {
-      ctx.clearRect(0, 0, 500, 500);
-      ctx.drawImage(image, 0, 0, 500, 500);
+      image.onload = () => {
+        ctx.clearRect(0, 0, 500, 500);
+        ctx.drawImage(image, 0, 0, 500, 500);
 
-      ctx.fillStyle = fontColor;
-      ctx.strokeStyle = "black";
-      ctx.lineWidth = 3;
-      ctx.textAlign = "center";
-      ctx.font = `${fontSize}px Impact`;
+        ctx.fillStyle = fontColor;
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.textAlign = "center";
+        ctx.font = `${fontSize}px ${fontFamily}`;
 
-      ctx.fillText(top, 250, 50);
-      ctx.strokeText(top, 250, 50);
+        ctx.fillText(top, 250, 50);
+        ctx.strokeText(top, 250, 50);
 
-      ctx.fillText(bottom, pos.x, pos.y);
-      ctx.strokeText(bottom, pos.x, pos.y);
-    };
-  };
+        ctx.fillText(bottom, pos.x, pos.y);
+        ctx.strokeText(bottom, pos.x, pos.y);
+      };
+    },
+    [topText, bottomText, fontSize, fontColor, fontFamily, pos],
+  );
 
   const randomMeme = () => {
     if (!memes.length) return;
@@ -66,9 +71,7 @@ export default function App() {
     draw(meme.url);
   };
 
-  const handleGenerate = () => {
-    draw(img);
-  };
+  const handleGenerate = () => draw(img);
 
   const download = () => {
     const link = document.createElement("a");
@@ -118,9 +121,10 @@ export default function App() {
     });
   };
 
+  // ✅ SAFE REDRAW (FIXED)
   useEffect(() => {
     if (img) draw(img);
-  }, [topText, bottomText, fontSize, fontColor, pos]);
+  }, [img, draw]);
 
   return (
     <div className={dark ? "app dark" : "app"}>
@@ -143,9 +147,12 @@ export default function App() {
       </div>
 
       <div>
-        <select onChange={() => draw(img)}>
-          <option>Impact</option>
-          <option>Arial</option>
+        <select
+          value={fontFamily}
+          onChange={(e) => setFontFamily(e.target.value)}
+        >
+          <option value="Impact">Impact</option>
+          <option value="Arial">Arial</option>
         </select>
 
         <input
