@@ -1,0 +1,54 @@
+type User @table {
+  username: String!
+  createdAt: Timestamp!
+  email: String
+  profilePictureUrl: String
+}
+
+type MemeTemplate @table {
+  name: String!
+  imageUrl: String!
+  createdAt: Timestamp!
+  description: String
+  tags: [String]
+}
+
+type Meme @table {
+  user: User!
+  memeTemplate: MemeTemplate
+  imageUrl: String!
+  createdAt: Timestamp!
+  isPublic: Boolean!
+  title: String
+  description: String
+  topText: String
+  bottomText: String
+  fontColor: String
+  fontSize: Int
+}
+
+type MemeText @table {
+  meme: Meme!
+  textString: String!
+  positionX: Int!
+  positionY: Int!
+  createdAt: Timestamp!
+  fontFamily: String
+  fontSize: Int
+  fontColor: String
+  rotation: Float
+  alignment: String
+}
+
+type Comment @table {
+  user: User!
+  meme: Meme!
+  commentText: String!
+  createdAt: Timestamp!
+}
+
+type FavoriteMeme @table(key: ["user", "meme"]) {
+  user: User!
+  meme: Meme!
+  createdAt: Timestamp!
+}
