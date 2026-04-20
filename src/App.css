@@ -9,7 +9,10 @@ body {
   background: #f5f5f5;
 }
 
-/* APP WRAPPER */
+/* ===================== */
+/* APP */
+/* ===================== */
+
 .app {
   text-align: center;
   padding: 20px;
@@ -18,19 +21,24 @@ body {
 }
 
 .dark {
-  background: #111;
-  color: #fff;
+  background: #0f0f0f;
+  color: #ffffff;
 }
 
+/* ===================== */
 /* TITLE */
+/* ===================== */
+
 h1 {
   margin-bottom: 20px;
   font-size: 28px;
+  letter-spacing: 1px;
 }
 
 /* ===================== */
 /* INPUTS */
 /* ===================== */
+
 input,
 select {
   margin: 6px;
@@ -39,15 +47,17 @@ select {
   border: 1px solid #ccc;
   border-radius: 8px;
   outline: none;
+  transition: 0.2s;
 }
 
 input:focus {
-  border-color: #333;
+  border-color: #222;
 }
 
 /* ===================== */
 /* BUTTONS */
 /* ===================== */
+
 button {
   margin: 6px;
   padding: 10px 15px;
@@ -57,6 +67,7 @@ button {
   color: white;
   border-radius: 8px;
   transition: 0.2s;
+  font-weight: 500;
 }
 
 button:hover {
@@ -67,25 +78,27 @@ button:hover {
 /* ===================== */
 /* CANVAS */
 /* ===================== */
+
 canvas {
   margin-top: 20px;
   border-radius: 12px;
   border: 2px solid #ccc;
   max-width: 90%;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
 /* ===================== */
 /* NAVBAR */
 /* ===================== */
+
 .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 25px;
+  padding: 16px 25px;
   background: #111;
   color: white;
-  border-radius: 12px;
+  border-radius: 14px;
   margin-bottom: 20px;
 }
 
@@ -104,14 +117,57 @@ canvas {
 }
 
 /* ===================== */
+/* USER BOX */
+/* ===================== */
+
+.user-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 15px 0;
+  justify-content: center;
+
+  padding: 10px 15px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark .user-box {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.email {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* ===================== */
 /* GALLERY */
 /* ===================== */
+
 .gallery {
   margin-top: 30px;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .card {
@@ -119,8 +175,13 @@ canvas {
   padding: 12px;
   border-radius: 12px;
   width: 140px;
+
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
   transition: 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-4px);
 }
 
 .dark .card {
@@ -141,6 +202,7 @@ canvas {
 /* ===================== */
 /* PROFILE PAGE */
 /* ===================== */
+
 .profile-container {
   max-width: 1000px;
   margin: auto;
@@ -148,6 +210,7 @@ canvas {
 }
 
 /* HEADER */
+
 .profile-header {
   display: flex;
   justify-content: space-between;
@@ -160,6 +223,7 @@ canvas {
 }
 
 /* GRID */
+
 .profile-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -173,7 +237,8 @@ canvas {
   }
 }
 
-/* CARD (GLOBAL FIX - IMPORTANT) */
+/* CARD */
+
 .card {
   background: white;
   padding: 18px;
@@ -186,14 +251,14 @@ canvas {
   background: #1e1e1e;
 }
 
-/* USER INFO CLEAN FIX */
+/* INFO */
+
 .info-grid {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* FIXED ROW */
 .info-item {
   display: flex;
   flex-direction: column;
@@ -201,7 +266,6 @@ canvas {
 
   padding: 12px 14px;
   border-radius: 10px;
-
   background: #f3f3f3;
 }
 
@@ -209,22 +273,21 @@ canvas {
   background: #2a2a2a;
 }
 
-/* LABEL */
 .label {
   font-size: 12px;
   opacity: 0.6;
 }
 
-/* VALUE (IMPORTANT FIX) */
 .value {
   font-size: 14px;
   font-weight: 600;
 
-  word-break: break-word; /* مهم */
-  overflow-wrap: anywhere; /* مهم */
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* STATS */
+
 .stat-box {
   text-align: center;
   padding: 20px;
@@ -240,12 +303,13 @@ canvas {
 }
 
 /* BUTTONS */
+
 .logout-btn {
   background: #ff3b3b;
 }
 
 .logout-btn:hover {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .back-btn {
@@ -257,7 +321,8 @@ canvas {
   background: #444;
 }
 
-/* PROFILE GRID */
+/* PROFILE MEMES */
+
 .profile-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -267,19 +332,4 @@ canvas {
 .meme-card img {
   width: 100%;
   border-radius: 10px;
-}
-.user-box {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 15px 0;
-  justify-content: center;
-}
-
-.avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #fff;
 }

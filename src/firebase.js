@@ -1,3 +1,5 @@
+// src/firebase.js
+
 import { initializeApp, getApps } from "firebase/app";
 import {
   getAuth,
@@ -7,9 +9,9 @@ import {
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// ======================
-// FIREBASE CONFIG
-// ======================
+/* ======================
+   FIREBASE CONFIG
+====================== */
 const firebaseConfig = {
   apiKey: "AIzaSyBcDXp8Zsm6-q2Iuoax6e6H_pwPmkeq4uU",
   authDomain: "meme-generator-saas-65cb3.firebaseapp.com",
@@ -19,38 +21,53 @@ const firebaseConfig = {
   appId: "1:217488399030:web:f01ff80f95b54890936417",
 };
 
-// ======================
-// SAFE INIT (NO DUPLICATE)
-// ======================
+/* ======================
+   SAFE APP INIT
+   (prevents duplicate firebase apps)
+====================== */
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
-// ======================
-// AUTH
-// ======================
+/* ======================
+   AUTH
+====================== */
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
 
-// Login with Google
+/* ======================
+   GOOGLE LOGIN
+====================== */
 export const loginWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, provider);
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("User logged in:", result.user);
+    }
+
     return result.user;
   } catch (error) {
     console.error("Google Login Error:", error);
-    alert(error.message);
+
+    alert("Login failed. Please try again.");
   }
 };
 
-// Logout
+/* ======================
+   LOGOUT
+====================== */
 export const logout = async () => {
   try {
     await signOut(auth);
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("User logged out");
+    }
   } catch (error) {
     console.error("Logout Error:", error);
   }
 };
 
-// ======================
-// FIRESTORE
-// ======================
+/* ======================
+   FIRESTORE
+====================== */
 export const db = getFirestore(app);

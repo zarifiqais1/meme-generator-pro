@@ -37,42 +37,66 @@ export default function MemeApp() {
 
   const canvasRef = useRef(null);
 
-  /* AUTH */
+  /* ======================
+     AUTH STATE
+  ====================== */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("Auth state:", u);
+      }
     });
+
     return () => unsub();
   }, []);
 
-  /* LOAD MEMES API */
+  /* ======================
+     LOAD MEME API
+  ====================== */
   useEffect(() => {
-    fetch("https://api.imgflip.com/get_memes")
-      .then((res) => res.json())
-      .then((data) => setMemes(data.data.memes))
-      .catch(() => {});
+    const loadMemesAPI = async () => {
+      try {
+        const res = await fetch("https://api.imgflip.com/get_memes");
+        const data = await res.json();
+        setMemes(data.data.memes);
+      } catch (err) {
+        console.error("Meme API error:", err);
+      }
+    };
+
+    loadMemesAPI();
   }, []);
 
-  /* LOAD FIRESTORE */
+  /* ======================
+     LOAD USER MEMES
+  ====================== */
   const loadMemes = async () => {
     if (!user) return;
 
-    const q = query(collection(db, "memes"), where("userId", "==", user.uid));
-    const snapshot = await getDocs(q);
+    try {
+      const q = query(collection(db, "memes"), where("userId", "==", user.uid));
+      const snapshot = await getDocs(q);
 
-    setGallery(
-      snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })),
-    );
+      setGallery(
+        snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })),
+      );
+    } catch (err) {
+      console.error("Firestore load error:", err);
+    }
   };
 
   useEffect(() => {
     if (user) loadMemes();
   }, [user]);
 
-  /* DRAW */
+  /* ======================
+     CANVAS DRAW
+  ====================== */
   const draw = useCallback(
     (imageSrc, top = topText, bottom = bottomText) => {
       if (!imageSrc || !canvasRef.current) return;
@@ -104,6 +128,9 @@ export default function MemeApp() {
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
+  /* ======================
+     RANDOM MEME
+  ====================== */
   const randomMeme = () => {
     if (!memes.length) return;
 
@@ -114,6 +141,9 @@ export default function MemeApp() {
 
   const handleGenerate = () => draw(img);
 
+  /* ======================
+     DOWNLOAD
+  ====================== */
   const download = () => {
     const link = document.createElement("a");
     link.download = "meme.png";
@@ -121,25 +151,45 @@ export default function MemeApp() {
     link.click();
   };
 
+  /* ======================
+     SAVE MEME
+  ====================== */
   const saveMeme = async () => {
-    if (!user) return alert("Login required");
+    if (!user) {
+      alert("Please login first");
+      return;
+    }
 
-    const data = canvasRef.current.toDataURL("image/png");
+    try {
+      const data = canvasRef.current.toDataURL("image/png");
 
-    await addDoc(collection(db, "memes"), {
-      img: data,
-      userId: user.uid,
-      createdAt: Date.now(),
-    });
+      await addDoc(collection(db, "memes"), {
+        img: data,
+        userId: user.uid,
+        createdAt: Date.now(),
+      });
 
-    loadMemes();
+      loadMemes();
+    } catch (err) {
+      console.error("Save meme error:", err);
+    }
   };
 
+  /* ======================
+     DELETE MEME
+  ====================== */
   const deleteMeme = async (id) => {
-    await deleteDoc(doc(db, "memes", id));
-    loadMemes();
+    try {
+      await deleteDoc(doc(db, "memes", id));
+      loadMemes();
+    } catch (err) {
+      console.error("Delete meme error:", err);
+    }
   };
 
+  /* ======================
+     DRAG TEXT
+  ====================== */
   const handleMouseMove = (e) => {
     if (!dragging) return;
 
@@ -155,6 +205,9 @@ export default function MemeApp() {
     if (img) draw(img);
   }, [img, draw]);
 
+  /* ======================
+     UI
+  ====================== */
   return (
     <div className={dark ? "app dark" : "app"}>
       {/* NAVBAR */}
@@ -169,7 +222,7 @@ export default function MemeApp() {
 
       <h1>Meme Generator PRO</h1>
 
-      {/* AUTH - UPDATED UI */}
+      {/* AUTH */}
       <div className="user-box">
         {user ? (
           <>
@@ -181,9 +234,10 @@ export default function MemeApp() {
               }
               alt="avatar"
             />
-            <div>
-              <div>{user.displayName}</div>
-              <small>{user.email}</small>
+
+            <div className="user-info">
+              <div className="name">{user.displayName}</div>
+              <div className="email">{user.email}</div>
             </div>
 
             <button onClick={logout}>Logout</button>
@@ -195,6 +249,7 @@ export default function MemeApp() {
 
       <button onClick={() => setDark(!dark)}>Toggle Dark Mode</button>
 
+      {/* TEXT INPUTS */}
       <div>
         <input
           placeholder="Top text"
@@ -209,6 +264,7 @@ export default function MemeApp() {
         />
       </div>
 
+      {/* FONT CONTROLS */}
       <div>
         <select
           value={fontFamily}
@@ -233,6 +289,7 @@ export default function MemeApp() {
         />
       </div>
 
+      {/* ACTION BUTTONS */}
       <div>
         <button onClick={randomMeme}>Random</button>
         <button onClick={handleGenerate}>Generate</button>
@@ -240,6 +297,7 @@ export default function MemeApp() {
         <button onClick={saveMeme}>Save</button>
       </div>
 
+      {/* CANVAS */}
       <canvas
         ref={canvasRef}
         width="500"
@@ -249,6 +307,7 @@ export default function MemeApp() {
         onMouseMove={handleMouseMove}
       />
 
+      {/* GALLERY */}
       <h2>Cloud Gallery</h2>
 
       <div className="gallery">
