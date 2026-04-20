@@ -22,33 +22,28 @@ const firebaseConfig = {
 };
 
 /* ======================
-   SAFE APP INIT
-   (prevents duplicate firebase apps)
+   SAFE INIT (NO DUPLICATE APP)
 ====================== */
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
 /* ======================
-   AUTH
+   AUTH SETUP
 ====================== */
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
 
 /* ======================
-   GOOGLE LOGIN
+   GOOGLE LOGIN (POPUP SAFE)
 ====================== */
 export const loginWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, provider);
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("User logged in:", result.user);
-    }
-
     return result.user;
   } catch (error) {
     console.error("Google Login Error:", error);
 
-    alert("Login failed. Please try again.");
+    // Better UX message
+    alert("Login failed. Please allow popup and try again.");
   }
 };
 
@@ -58,10 +53,6 @@ export const loginWithGoogle = async () => {
 export const logout = async () => {
   try {
     await signOut(auth);
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("User logged out");
-    }
   } catch (error) {
     console.error("Logout Error:", error);
   }
