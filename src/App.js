@@ -182,7 +182,7 @@ export default function App() {
 
   return (
     <div className={dark ? "app dark" : "app"}>
-      <h1>🔥 Meme Generator PRO (SaaS)</h1>
+      <h1> Meme Generator PRO (SaaS)</h1>
 
       {/* AUTH */}
       <div style={{ marginBottom: "10px" }}>
