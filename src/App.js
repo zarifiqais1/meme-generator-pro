@@ -1,7 +1,22 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+
+import { auth, loginWithGoogle, logout } from "./firebase";
+
+import { onAuthStateChanged } from "firebase/auth";
+import { db } from "./firebase";
+
 export default function App() {
+  const [user, setUser] = useState(null);
+
   const [memes, setMemes] = useState([]);
   const [img, setImg] = useState("");
   const [topText, setTopText] = useState("");
@@ -15,16 +30,24 @@ export default function App() {
   const [pos, setPos] = useState({ x: 250, y: 250 });
   const [dragging, setDragging] = useState(false);
 
-  const [gallery, setGallery] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("gallery") || "[]");
-    } catch {
-      return [];
-    }
-  });
+  const [gallery, setGallery] = useState([]);
 
   const canvasRef = useRef(null);
 
+  // =========================
+  // AUTH LISTENER
+  // =========================
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => unsub();
+  }, []);
+
+  // =========================
+  // LOAD MEME API
+  // =========================
   useEffect(() => {
     fetch("https://api.imgflip.com/get_memes")
       .then((res) => res.json())
@@ -32,7 +55,27 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  // ✅ SAFE DRAW FUNCTION
+  // =========================
+  // LOAD FIRESTORE DATA
+  // =========================
+  const loadMemes = async () => {
+    const snapshot = await getDocs(collection(db, "memes"));
+
+    const items = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    setGallery(items);
+  };
+
+  useEffect(() => {
+    loadMemes();
+  }, []);
+
+  // =========================
+  // DRAW FUNCTION
+  // =========================
   const draw = useCallback(
     (imageSrc, top = topText, bottom = bottomText) => {
       if (!imageSrc || !canvasRef.current) return;
@@ -64,6 +107,9 @@ export default function App() {
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
+  // =========================
+  // RANDOM MEME
+  // =========================
   const randomMeme = () => {
     if (!memes.length) return;
     const meme = memes[Math.floor(Math.random() * memes.length)];
@@ -73,6 +119,9 @@ export default function App() {
 
   const handleGenerate = () => draw(img);
 
+  // =========================
+  // DOWNLOAD
+  // =========================
   const download = () => {
     const link = document.createElement("a");
     link.download = "meme.png";
@@ -80,36 +129,39 @@ export default function App() {
     link.click();
   };
 
-  const saveMeme = () => {
+  // =========================
+  // SAVE TO FIRESTORE
+  // =========================
+  const saveMeme = async () => {
+    if (!user) {
+      alert("Please login first");
+      return;
+    }
+
     const canvas = canvasRef.current;
     const data = canvas.toDataURL("image/png");
 
-    const newItem = {
-      id: Date.now(),
+    await addDoc(collection(db, "memes"), {
       img: data,
+      userId: user.uid,
       liked: false,
-    };
+      createdAt: Date.now(),
+    });
 
-    const updated = [newItem, ...gallery];
-    setGallery(updated);
-    localStorage.setItem("gallery", JSON.stringify(updated));
+    loadMemes();
   };
 
-  const deleteMeme = (id) => {
-    const updated = gallery.filter((item) => item.id !== id);
-    setGallery(updated);
-    localStorage.setItem("gallery", JSON.stringify(updated));
+  // =========================
+  // DELETE
+  // =========================
+  const deleteMeme = async (id) => {
+    await deleteDoc(doc(db, "memes", id));
+    loadMemes();
   };
 
-  const toggleLike = (id) => {
-    const updated = gallery.map((item) =>
-      item.id === id ? { ...item, liked: !item.liked } : item,
-    );
-
-    setGallery(updated);
-    localStorage.setItem("gallery", JSON.stringify(updated));
-  };
-
+  // =========================
+  // DRAG
+  // =========================
   const handleMouseMove = (e) => {
     if (!dragging) return;
 
@@ -121,14 +173,28 @@ export default function App() {
     });
   };
 
-  // ✅ SAFE REDRAW (FIXED)
+  // =========================
+  // REDRAW
+  // =========================
   useEffect(() => {
     if (img) draw(img);
   }, [img, draw]);
 
   return (
     <div className={dark ? "app dark" : "app"}>
-      <h1>🔥 Meme Generator PRO</h1>
+      <h1>🔥 Meme Generator PRO (SaaS)</h1>
+
+      {/* AUTH */}
+      <div style={{ marginBottom: "10px" }}>
+        {user ? (
+          <>
+            <p>👤 {user.displayName}</p>
+            <button onClick={logout}>Logout</button>
+          </>
+        ) : (
+          <button onClick={loginWithGoogle}>Login with Google</button>
+        )}
+      </div>
 
       <button onClick={() => setDark(!dark)}>Toggle Dark Mode</button>
 
@@ -174,7 +240,7 @@ export default function App() {
         <button onClick={randomMeme}>Random Meme</button>
         <button onClick={handleGenerate}>Generate</button>
         <button onClick={download}>Download</button>
-        <button onClick={saveMeme}>Save</button>
+        <button onClick={saveMeme}>Save Cloud</button>
       </div>
 
       <canvas
@@ -186,18 +252,14 @@ export default function App() {
         onMouseMove={handleMouseMove}
       />
 
-      <h2>📸 Saved Memes</h2>
+      <h2>📸 Cloud Gallery</h2>
 
       <div className="gallery">
         {gallery.map((item) => (
           <div key={item.id} className="card">
-            <img src={item.img} width="120" alt="saved meme" />
+            <img src={item.img} width="120" alt="meme" />
 
             <div>
-              <button onClick={() => toggleLike(item.id)}>
-                {item.liked ? "❤️" : "🤍"}
-              </button>
-
               <button onClick={() => deleteMeme(item.id)}>🗑️</button>
             </div>
           </div>
