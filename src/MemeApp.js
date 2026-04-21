@@ -44,23 +44,23 @@ export default function MemeApp() {
   const canvasRef = useRef(null);
 
   /* ======================
-     AUTH STATE (NORMAL LOGIN)
+     AUTH FIX (NO LOOP + CLEAN REDIRECT)
   ====================== */
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u || null);
+    });
+
     return () => unsub();
   }, []);
 
-  /* ======================
-     REDIRECT LOGIN FIX (IMPORTANT)
-  ====================== */
   useEffect(() => {
-    const checkRedirect = async () => {
+    const initRedirect = async () => {
       const u = await handleRedirectLogin();
       if (u) setUser(u);
     };
 
-    checkRedirect();
+    initRedirect();
   }, []);
 
   /* ======================
@@ -70,24 +70,29 @@ export default function MemeApp() {
     fetch("https://api.imgflip.com/get_memes")
       .then((res) => res.json())
       .then((data) => setMemes(data?.data?.memes || []))
-      .catch(() => {});
+      .catch(console.error);
   }, []);
 
   /* ======================
-     FIRESTORE LOAD
+     LOAD USER MEMES
   ====================== */
   const loadMemes = useCallback(async () => {
     if (!user) return;
 
-    const q = query(collection(db, "memes"), where("userId", "==", user.uid));
-    const snapshot = await getDocs(q);
+    try {
+      const q = query(collection(db, "memes"), where("userId", "==", user.uid));
 
-    setGallery(
-      snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })),
-    );
+      const snapshot = await getDocs(q);
+
+      setGallery(
+        snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })),
+      );
+    } catch (err) {
+      console.error(err);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -154,7 +159,7 @@ export default function MemeApp() {
   };
 
   /* ======================
-     SAVE MEME
+     SAVE
   ====================== */
   const saveMeme = async () => {
     if (!user) return alert("Please login first");
@@ -174,7 +179,7 @@ export default function MemeApp() {
   };
 
   /* ======================
-     DELETE MEME
+     DELETE
   ====================== */
   const deleteMeme = async (id) => {
     await deleteDoc(doc(db, "memes", id));
@@ -199,9 +204,6 @@ export default function MemeApp() {
     if (img) draw(img);
   }, [img, draw]);
 
-  /* ======================
-     UI
-  ====================== */
   return (
     <div className={dark ? "app dark" : "app"}>
       {/* NAVBAR */}
