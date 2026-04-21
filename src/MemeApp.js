@@ -229,32 +229,31 @@ export default function MemeApp() {
       </div>
 
       {/* STYLE */}
-      <div>
-        <select
-          name="fontFamily"
-          value={fontFamily}
-          onChange={(e) => setFontFamily(e.target.value)}
-        >
-          <option value="Impact">Impact</option>
-          <option value="Arial">Arial</option>
-        </select>
+      <input
+        id="topText"
+        name="topText"
+        placeholder="Top text"
+        value={topText}
+        onChange={(e) => setTopText(e.target.value)}
+      />
 
-        <input
-          name="fontColor"
-          type="color"
-          value={fontColor}
-          onChange={(e) => setFontColor(e.target.value)}
-        />
+      <input
+        id="bottomText"
+        name="bottomText"
+        placeholder="Bottom text"
+        value={bottomText}
+        onChange={(e) => setBottomText(e.target.value)}
+      />
 
-        <input
-          name="fontSize"
-          type="range"
-          min="10"
-          max="60"
-          value={fontSize}
-          onChange={(e) => setFontSize(Number(e.target.value))}
-        />
-      </div>
+      <select
+        id="fontFamily"
+        name="fontFamily"
+        value={fontFamily}
+        onChange={(e) => setFontFamily(e.target.value)}
+      >
+        <option value="Impact">Impact</option>
+        <option value="Arial">Arial</option>
+      </select>
 
       {/* ACTIONS */}
       <div>
