@@ -36,46 +36,27 @@ export default function MemeApp() {
 
   const canvasRef = useRef(null);
 
-  /* ======================
-     AUTH
-  ====================== */
+  /* AUTH */
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("Auth:", u);
-      }
-    });
-
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsub();
   }, []);
 
-  /* ======================
-     LOAD MEME API
-  ====================== */
+  /* LOAD MEME API */
   useEffect(() => {
-    const loadMemesAPI = async () => {
-      try {
-        const res = await fetch("https://api.imgflip.com/get_memes");
-        const data = await res.json();
-        setMemes(data.data.memes || []);
-      } catch (err) {
-        console.error("Meme API error:", err);
-      }
-    };
-
-    loadMemesAPI();
+    fetch("https://api.imgflip.com/get_memes")
+      .then((res) => res.json())
+      .then((data) => setMemes(data?.data?.memes || []))
+      .catch(console.error);
   }, []);
 
-  /* ======================
-     LOAD USER MEMES
-  ====================== */
+  /* LOAD FIRESTORE MEMES */
   const loadMemes = useCallback(async () => {
     if (!user) return;
 
     try {
       const q = query(collection(db, "memes"), where("userId", "==", user.uid));
+
       const snapshot = await getDocs(q);
 
       setGallery(
@@ -85,25 +66,23 @@ export default function MemeApp() {
         })),
       );
     } catch (err) {
-      console.error("Firestore error:", err);
+      console.error(err);
     }
   }, [user]);
 
   useEffect(() => {
-    if (user) loadMemes();
-  }, [user, loadMemes]);
+    loadMemes();
+  }, [loadMemes]);
 
-  /* ======================
-     DRAW CANVAS
-  ====================== */
+  /* DRAW */
   const draw = useCallback(
     (imageSrc, top = topText, bottom = bottomText) => {
-      if (!imageSrc || !canvasRef.current) return;
-
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
+      if (!imageSrc || !canvas) return;
 
+      const ctx = canvas.getContext("2d");
       const image = new Image();
+
       image.crossOrigin = "anonymous";
       image.src = imageSrc;
 
@@ -127,12 +106,9 @@ export default function MemeApp() {
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
-  /* ======================
-     RANDOM MEME
-  ====================== */
+  /* RANDOM MEME */
   const randomMeme = () => {
     if (!memes.length) return;
-
     const meme = memes[Math.floor(Math.random() * memes.length)];
     setImg(meme.url);
     draw(meme.url);
@@ -140,9 +116,7 @@ export default function MemeApp() {
 
   const handleGenerate = () => draw(img);
 
-  /* ======================
-     DOWNLOAD
-  ====================== */
+  /* DOWNLOAD */
   const download = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -153,52 +127,36 @@ export default function MemeApp() {
     link.click();
   };
 
-  /* ======================
-     SAVE MEME
-  ====================== */
+  /* SAVE */
   const saveMeme = async () => {
-    if (!user) {
-      alert("Please login first");
-      return;
-    }
+    if (!user) return alert("Please login first");
 
-    try {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-      const data = canvas.toDataURL("image/png");
+    const data = canvas.toDataURL("image/png");
 
-      await addDoc(collection(db, "memes"), {
-        img: data,
-        userId: user.uid,
-        createdAt: Date.now(),
-      });
+    await addDoc(collection(db, "memes"), {
+      img: data,
+      userId: user.uid,
+      createdAt: Date.now(),
+    });
 
-      loadMemes();
-    } catch (err) {
-      console.error("Save error:", err);
-    }
+    loadMemes();
   };
 
-  /* ======================
-     DELETE MEME
-  ====================== */
+  /* DELETE */
   const deleteMeme = async (id) => {
-    try {
-      await deleteDoc(doc(db, "memes", id));
-      loadMemes();
-    } catch (err) {
-      console.error("Delete error:", err);
-    }
+    await deleteDoc(doc(db, "memes", id));
+    loadMemes();
   };
 
-  /* ======================
-     DRAG TEXT
-  ====================== */
+  /* DRAG */
   const handleMouseMove = (e) => {
-    if (!dragging || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    if (!dragging || !canvas) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
 
     setPos({
       x: e.clientX - rect.left,
@@ -210,9 +168,6 @@ export default function MemeApp() {
     if (img) draw(img);
   }, [img, draw]);
 
-  /* ======================
-     UI
-  ====================== */
   return (
     <div className={dark ? "app dark" : "app"}>
       {/* NAVBAR */}
@@ -235,12 +190,12 @@ export default function MemeApp() {
               className="avatar"
               src={
                 user.photoURL ||
-                "https://ui-avatars.com/api/?name=" + user.displayName
+                `https://ui-avatars.com/api/?name=${user.displayName}`
               }
               alt="avatar"
             />
 
-            <div className="user-info">
+            <div>
               <div>{user.displayName}</div>
               <small>{user.email}</small>
             </div>
@@ -257,6 +212,7 @@ export default function MemeApp() {
       {/* INPUTS */}
       <div>
         <input
+          id="topText"
           name="topText"
           placeholder="Top text"
           value={topText}
@@ -264,6 +220,7 @@ export default function MemeApp() {
         />
 
         <input
+          id="bottomText"
           name="bottomText"
           placeholder="Bottom text"
           value={bottomText}

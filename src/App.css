@@ -10,14 +10,14 @@ body {
 }
 
 /* ===================== */
-/* APP */
+/* APP WRAPPER */
 /* ===================== */
 
 .app {
   text-align: center;
   padding: 20px;
   min-height: 100vh;
-  transition: 0.3s;
+  transition: 0.3s ease;
 }
 
 .dark {
@@ -51,7 +51,7 @@ select {
 }
 
 input:focus {
-  border-color: #222;
+  border-color: #111;
 }
 
 /* ===================== */
@@ -123,17 +123,18 @@ canvas {
 .user-box {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 15px 0;
   justify-content: center;
+  gap: 12px;
 
-  padding: 10px 15px;
+  margin: 15px 0;
+  padding: 12px 16px;
+
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.05);
 }
 
 .dark .user-box {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .avatar {
@@ -170,14 +171,16 @@ canvas {
   gap: 14px;
 }
 
+/* SINGLE CARD (FIXED - NO DUPLICATE) */
+
 .card {
   background: white;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 14px;
+  border-radius: 14px;
   width: 140px;
 
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-  transition: 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: 0.2s ease;
 }
 
 .card:hover {
@@ -196,7 +199,7 @@ canvas {
 .card button {
   font-size: 12px;
   padding: 6px;
-  margin-top: 5px;
+  margin-top: 6px;
 }
 
 /* ===================== */
@@ -208,8 +211,6 @@ canvas {
   margin: auto;
   padding: 30px;
 }
-
-/* HEADER */
 
 .profile-header {
   display: flex;
@@ -237,21 +238,7 @@ canvas {
   }
 }
 
-/* CARD */
-
-.card {
-  background: white;
-  padding: 18px;
-  border-radius: 14px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  text-align: left;
-}
-
-.dark .card {
-  background: #1e1e1e;
-}
-
-/* INFO */
+/* INFO BOX */
 
 .info-grid {
   display: flex;
@@ -281,7 +268,6 @@ canvas {
 .value {
   font-size: 14px;
   font-weight: 600;
-
   word-break: break-word;
   overflow-wrap: anywhere;
 }
@@ -302,26 +288,7 @@ canvas {
   opacity: 0.6;
 }
 
-/* BUTTONS */
-
-.logout-btn {
-  background: #ff3b3b;
-}
-
-.logout-btn:hover {
-  opacity: 0.85;
-}
-
-.back-btn {
-  background: #222;
-  margin: 15px 0;
-}
-
-.back-btn:hover {
-  background: #444;
-}
-
-/* PROFILE MEMES */
+/* PROFILE MEME GRID */
 
 .profile-grid {
   display: grid;

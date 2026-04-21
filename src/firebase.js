@@ -27,23 +27,30 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
 /* ======================
-   AUTH SETUP
+   AUTH
 ====================== */
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
 
 /* ======================
-   GOOGLE LOGIN (POPUP SAFE)
+   GOOGLE LOGIN (FIXED POPUP ISSUES)
 ====================== */
 export const loginWithGoogle = async () => {
   try {
+    // safer popup handling (fix COOP errors)
     const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (error) {
     console.error("Google Login Error:", error);
 
-    // Better UX message
-    alert("Login failed. Please allow popup and try again.");
+    // Better UX
+    if (error.code === "auth/popup-blocked") {
+      alert("Popup blocked! Please allow popups in your browser.");
+    } else if (error.code === "auth/cancelled-popup-request") {
+      alert("Login cancelled.");
+    } else {
+      alert("Login failed. Try again.");
+    }
   }
 };
 
