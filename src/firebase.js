@@ -4,7 +4,8 @@ import { initializeApp, getApps } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -22,7 +23,7 @@ const firebaseConfig = {
 };
 
 /* ======================
-   SAFE INIT (NO DUPLICATE APP)
+   INIT APP
 ====================== */
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
@@ -33,24 +34,26 @@ export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
 
 /* ======================
-   GOOGLE LOGIN (FIXED POPUP ISSUES)
+   LOGIN (FIXED - NO POPUP ERROR)
 ====================== */
 export const loginWithGoogle = async () => {
   try {
-    // safer popup handling (fix COOP errors)
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
+    await signInWithRedirect(auth, provider);
   } catch (error) {
-    console.error("Google Login Error:", error);
+    console.error("Login Error:", error);
+  }
+};
 
-    // Better UX
-    if (error.code === "auth/popup-blocked") {
-      alert("Popup blocked! Please allow popups in your browser.");
-    } else if (error.code === "auth/cancelled-popup-request") {
-      alert("Login cancelled.");
-    } else {
-      alert("Login failed. Try again.");
-    }
+/* ======================
+   HANDLE REDIRECT RESULT
+====================== */
+export const handleRedirectLogin = async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    return result?.user || null;
+  } catch (error) {
+    console.error("Redirect Login Error:", error);
+    return null;
   }
 };
 

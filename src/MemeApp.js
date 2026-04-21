@@ -11,7 +11,14 @@ import {
   where,
 } from "firebase/firestore";
 
-import { auth, loginWithGoogle, logout, db } from "./firebase";
+import {
+  auth,
+  loginWithGoogle,
+  logout,
+  db,
+  handleRedirectLogin,
+} from "./firebase";
+
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
@@ -36,13 +43,29 @@ export default function MemeApp() {
 
   const canvasRef = useRef(null);
 
-  /* AUTH */
+  /* ======================
+     AUTH STATE (NORMAL LOGIN)
+  ====================== */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsub();
   }, []);
 
-  /* MEME API */
+  /* ======================
+     REDIRECT LOGIN FIX (IMPORTANT)
+  ====================== */
+  useEffect(() => {
+    const checkRedirect = async () => {
+      const u = await handleRedirectLogin();
+      if (u) setUser(u);
+    };
+
+    checkRedirect();
+  }, []);
+
+  /* ======================
+     MEME API
+  ====================== */
   useEffect(() => {
     fetch("https://api.imgflip.com/get_memes")
       .then((res) => res.json())
@@ -50,7 +73,9 @@ export default function MemeApp() {
       .catch(() => {});
   }, []);
 
-  /* FIRESTORE LOAD */
+  /* ======================
+     FIRESTORE LOAD
+  ====================== */
   const loadMemes = useCallback(async () => {
     if (!user) return;
 
@@ -69,7 +94,9 @@ export default function MemeApp() {
     loadMemes();
   }, [loadMemes]);
 
-  /* DRAW */
+  /* ======================
+     DRAW CANVAS
+  ====================== */
   const draw = useCallback(
     (imageSrc, top = topText, bottom = bottomText) => {
       if (!imageSrc || !canvasRef.current) return;
@@ -101,7 +128,9 @@ export default function MemeApp() {
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
-  /* RANDOM */
+  /* ======================
+     RANDOM MEME
+  ====================== */
   const randomMeme = () => {
     if (!memes.length) return;
     const meme = memes[Math.floor(Math.random() * memes.length)];
@@ -111,7 +140,9 @@ export default function MemeApp() {
 
   const handleGenerate = () => draw(img);
 
-  /* DOWNLOAD */
+  /* ======================
+     DOWNLOAD
+  ====================== */
   const download = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -122,7 +153,9 @@ export default function MemeApp() {
     link.click();
   };
 
-  /* SAVE */
+  /* ======================
+     SAVE MEME
+  ====================== */
   const saveMeme = async () => {
     if (!user) return alert("Please login first");
 
@@ -140,13 +173,17 @@ export default function MemeApp() {
     loadMemes();
   };
 
-  /* DELETE */
+  /* ======================
+     DELETE MEME
+  ====================== */
   const deleteMeme = async (id) => {
     await deleteDoc(doc(db, "memes", id));
     loadMemes();
   };
 
-  /* DRAG */
+  /* ======================
+     DRAG TEXT
+  ====================== */
   const handleMouseMove = (e) => {
     if (!dragging || !canvasRef.current) return;
 
@@ -162,8 +199,12 @@ export default function MemeApp() {
     if (img) draw(img);
   }, [img, draw]);
 
+  /* ======================
+     UI
+  ====================== */
   return (
     <div className={dark ? "app dark" : "app"}>
+      {/* NAVBAR */}
       <div className="navbar">
         <div className="logo">Meme App</div>
 
@@ -202,10 +243,9 @@ export default function MemeApp() {
 
       <button onClick={() => setDark(!dark)}>Toggle Dark Mode</button>
 
-      {/* ✅ FIXED FORM FIELDS (NO DUPLICATE = FIXED ISSUE) */}
+      {/* INPUTS */}
       <div>
         <input
-          id="topText"
           name="topText"
           placeholder="Top text"
           value={topText}
@@ -213,7 +253,6 @@ export default function MemeApp() {
         />
 
         <input
-          id="bottomText"
           name="bottomText"
           placeholder="Bottom text"
           value={bottomText}
@@ -221,9 +260,9 @@ export default function MemeApp() {
         />
       </div>
 
+      {/* STYLE */}
       <div>
         <select
-          id="fontFamily"
           name="fontFamily"
           value={fontFamily}
           onChange={(e) => setFontFamily(e.target.value)}
@@ -233,7 +272,6 @@ export default function MemeApp() {
         </select>
 
         <input
-          id="fontColor"
           name="fontColor"
           type="color"
           value={fontColor}
@@ -241,7 +279,6 @@ export default function MemeApp() {
         />
 
         <input
-          id="fontSize"
           name="fontSize"
           type="range"
           min="10"
@@ -251,6 +288,7 @@ export default function MemeApp() {
         />
       </div>
 
+      {/* ACTIONS */}
       <div>
         <button onClick={randomMeme}>Random</button>
         <button onClick={handleGenerate}>Generate</button>
@@ -258,6 +296,7 @@ export default function MemeApp() {
         <button onClick={saveMeme}>Save</button>
       </div>
 
+      {/* CANVAS */}
       <canvas
         ref={canvasRef}
         width="500"
@@ -267,6 +306,7 @@ export default function MemeApp() {
         onMouseMove={handleMouseMove}
       />
 
+      {/* GALLERY */}
       <h2>Cloud Gallery</h2>
 
       <div className="gallery">
