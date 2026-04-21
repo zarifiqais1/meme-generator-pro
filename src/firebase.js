@@ -23,7 +23,7 @@ const firebaseConfig = {
 };
 
 /* ======================
-   INIT APP
+   INIT APP (SAFE INIT)
 ====================== */
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
@@ -31,10 +31,18 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
    AUTH
 ====================== */
 export const auth = getAuth(app);
+
 export const provider = new GoogleAuthProvider();
 
+/* 🔥 IMPORTANT FIX
+   همیشه صفحه انتخاب Gmail را نشان می‌دهد
+*/
+provider.setCustomParameters({
+  prompt: "select_account",
+});
+
 /* ======================
-   LOGIN (FIXED - NO POPUP ERROR)
+   LOGIN WITH GOOGLE
 ====================== */
 export const loginWithGoogle = async () => {
   try {
@@ -45,12 +53,17 @@ export const loginWithGoogle = async () => {
 };
 
 /* ======================
-   HANDLE REDIRECT RESULT
+   HANDLE REDIRECT LOGIN
 ====================== */
 export const handleRedirectLogin = async () => {
   try {
     const result = await getRedirectResult(auth);
-    return result?.user || null;
+
+    if (result?.user) {
+      return result.user;
+    }
+
+    return null;
   } catch (error) {
     console.error("Redirect Login Error:", error);
     return null;
