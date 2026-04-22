@@ -6,17 +6,14 @@ import "./index.css";
 
 const container = document.getElementById("root");
 
-// Safety check (good for debugging)
 if (!container) {
   console.error("Root element not found. Check public/index.html");
 } else {
   const root = ReactDOM.createRoot(container);
 
   root.render(
-    <React.StrictMode>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </React.StrictMode>,
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>,
   );
 }

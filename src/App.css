@@ -117,7 +117,7 @@ canvas {
 }
 
 /* ===================== */
-/* USER BOX */
+/* USER BOX (FIXED + MODERN) */
 /* ===================== */
 
 .user-box {
@@ -126,11 +126,16 @@ canvas {
   justify-content: center;
   gap: 12px;
 
-  margin: 15px 0;
+  margin: 15px auto;
   padding: 12px 16px;
 
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.05);
+
+  max-width: 450px;
+  flex-wrap: wrap;
+
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 
 .dark .user-box {
@@ -138,25 +143,32 @@ canvas {
 }
 
 .avatar {
-  width: 42px;
-  height: 42px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
-.user-info {
+/* ✅ FIX TEXT ALIGNMENT */
+.user-box > div {
   display: flex;
   flex-direction: column;
   text-align: left;
+  min-width: 0;
+  max-width: 220px;
 }
 
-.name {
-  font-weight: 600;
+.user-box .name {
+  font-weight: 700;
+  font-size: 14px;
+  word-break: break-word;
 }
 
-.email {
+.user-box .email {
   font-size: 12px;
-  opacity: 0.6;
+  opacity: 0.7;
+  word-break: break-word;
 }
 
 /* ===================== */
@@ -171,7 +183,7 @@ canvas {
   gap: 14px;
 }
 
-/* SINGLE CARD (FIXED - NO DUPLICATE) */
+/* CARD */
 
 .card {
   background: white;
@@ -181,6 +193,8 @@ canvas {
 
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: 0.2s ease;
+
+  overflow: hidden;
 }
 
 .card:hover {
@@ -196,14 +210,8 @@ canvas {
   border-radius: 8px;
 }
 
-.card button {
-  font-size: 12px;
-  padding: 6px;
-  margin-top: 6px;
-}
-
 /* ===================== */
-/* PROFILE PAGE */
+/* PROFILE PAGE (MODERN FIX) */
 /* ===================== */
 
 .profile-container {
@@ -217,6 +225,7 @@ canvas {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 25px;
+  gap: 10px;
 }
 
 .subtitle {
@@ -228,8 +237,8 @@ canvas {
 .profile-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 18px;
+  margin-bottom: 25px;
 }
 
 @media (max-width: 700px) {
@@ -238,7 +247,9 @@ canvas {
   }
 }
 
-/* INFO BOX */
+/* ===================== */
+/* INFO BOX (FIXED MODERN UI) */
+/* ===================== */
 
 .info-grid {
   display: flex;
@@ -249,11 +260,15 @@ canvas {
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 5px;
 
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: 14px;
+  border-radius: 12px;
+
   background: #f3f3f3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .dark .info-item {
@@ -263,32 +278,40 @@ canvas {
 .label {
   font-size: 12px;
   opacity: 0.6;
+  margin-bottom: 4px;
 }
 
 .value {
   font-size: 14px;
   font-weight: 600;
-  word-break: break-word;
   overflow-wrap: anywhere;
 }
 
-/* STATS */
+/* ===================== */
+/* STATS MODERN FIX */
+/* ===================== */
 
 .stat-box {
-  text-align: center;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
 .stat-number {
-  font-size: 40px;
-  font-weight: bold;
+  font-size: 42px;
+  font-weight: 800;
 }
 
 .stat-label {
   opacity: 0.6;
+  margin-top: 5px;
 }
 
+/* ===================== */
 /* PROFILE MEME GRID */
+/* ===================== */
 
 .profile-grid {
   display: grid;

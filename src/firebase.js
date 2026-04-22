@@ -2,15 +2,15 @@ import { initializeApp, getApps } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signOut,
+  setPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-/* CONFIG */
 const firebaseConfig = {
-  apiKey: "AIzaSyBcDXp8zSM6-q2Iuoax6e6H_pwPmkeq4uU",
+  apiKey: "AIzaSyBcDXp8Zsm6-q2Iuoax6e6H_pwPmkeq4uU",
   authDomain: "meme-generator-saas-65cb3.firebaseapp.com",
   projectId: "meme-generator-saas-65cb3",
   storageBucket: "meme-generator-saas-65cb3.appspot.com",
@@ -18,37 +18,52 @@ const firebaseConfig = {
   appId: "1:217488399030:web:f01ff80f95b54890936417",
 };
 
-/* INIT */
+/* ======================
+   INIT APP
+====================== */
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
-/* AUTH */
+/* ======================
+   AUTH
+====================== */
 export const auth = getAuth(app);
 
-export const provider = new GoogleAuthProvider();
+/* 🔥 IMPORTANT FIX: keep login after refresh */
+setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-/* IMPORTANT FIX */
+/* ======================
+   FIRESTORE
+====================== */
+export const db = getFirestore(app);
+
+/* ======================
+   GOOGLE PROVIDER
+====================== */
+const provider = new GoogleAuthProvider();
 provider.setCustomParameters({
   prompt: "select_account",
 });
 
-/* LOGIN */
-export const loginWithGoogle = () => {
-  return signInWithRedirect(auth, provider);
-};
-
-/* HANDLE REDIRECT ONCE ONLY */
-export const handleRedirectLogin = async () => {
+/* ======================
+   LOGIN (POPUP)
+====================== */
+export const loginWithGoogle = async () => {
   try {
-    const result = await getRedirectResult(auth);
-    return result?.user || null;
-  } catch (e) {
-    console.error(e);
-    return null;
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (error) {
+    console.error("Login error:", error);
+    throw error;
   }
 };
 
-/* LOGOUT */
-export const logout = () => signOut(auth);
-
-/* FIRESTORE */
-export const db = getFirestore(app);
+/* ======================
+   LOGOUT
+====================== */
+export const logout = async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
+};

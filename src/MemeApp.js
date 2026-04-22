@@ -11,14 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 
-import {
-  auth,
-  loginWithGoogle,
-  logout,
-  db,
-  handleRedirectLogin,
-} from "./firebase";
-
+import { auth, loginWithGoogle, logout, db } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
@@ -26,10 +19,14 @@ export default function MemeApp() {
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   const [memes, setMemes] = useState([]);
   const [img, setImg] = useState("");
+
   const [topText, setTopText] = useState("");
   const [bottomText, setBottomText] = useState("");
+
   const [dark, setDark] = useState(false);
 
   const [fontSize, setFontSize] = useState(30);
@@ -43,29 +40,17 @@ export default function MemeApp() {
 
   const canvasRef = useRef(null);
 
-  /* ======================
-     AUTH FIX (NO LOOP + CLEAN REDIRECT)
-  ====================== */
+  /* AUTH */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u || null);
+      setLoading(false);
     });
 
     return () => unsub();
   }, []);
 
-  useEffect(() => {
-    const initRedirect = async () => {
-      const u = await handleRedirectLogin();
-      if (u) setUser(u);
-    };
-
-    initRedirect();
-  }, []);
-
-  /* ======================
-     MEME API
-  ====================== */
+  /* MEME API */
   useEffect(() => {
     fetch("https://api.imgflip.com/get_memes")
       .then((res) => res.json())
@@ -73,37 +58,23 @@ export default function MemeApp() {
       .catch(console.error);
   }, []);
 
-  /* ======================
-     LOAD USER MEMES
-  ====================== */
-  const loadMemes = useCallback(async () => {
-    if (!user) return;
+  /* LOAD MEMES */
+  const loadMemes = useCallback(async (uid) => {
+    if (!uid) return;
 
-    try {
-      const q = query(collection(db, "memes"), where("userId", "==", user.uid));
+    const q = query(collection(db, "memes"), where("userId", "==", uid));
+    const snapshot = await getDocs(q);
 
-      const snapshot = await getDocs(q);
-
-      setGallery(
-        snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        })),
-      );
-    } catch (err) {
-      console.error(err);
-    }
-  }, [user]);
+    setGallery(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+  }, []);
 
   useEffect(() => {
-    loadMemes();
-  }, [loadMemes]);
+    if (user?.uid) loadMemes(user.uid);
+  }, [user, loadMemes]);
 
-  /* ======================
-     DRAW CANVAS
-  ====================== */
+  /* DRAW */
   const draw = useCallback(
-    (imageSrc, top = topText, bottom = bottomText) => {
+    (imageSrc) => {
       if (!imageSrc || !canvasRef.current) return;
 
       const canvas = canvasRef.current;
@@ -123,31 +94,28 @@ export default function MemeApp() {
         ctx.textAlign = "center";
         ctx.font = `${fontSize}px ${fontFamily}`;
 
-        ctx.fillText(top, 250, 50);
-        ctx.strokeText(top, 250, 50);
+        ctx.fillText(topText, 250, 50);
+        ctx.strokeText(topText, 250, 50);
 
-        ctx.fillText(bottom, pos.x, pos.y);
-        ctx.strokeText(bottom, pos.x, pos.y);
+        ctx.fillText(bottomText, pos.x, pos.y);
+        ctx.strokeText(bottomText, pos.x, pos.y);
       };
     },
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
-  /* ======================
-     RANDOM MEME
-  ====================== */
+  useEffect(() => {
+    if (img) draw(img);
+  }, [img, draw]);
+
   const randomMeme = () => {
     if (!memes.length) return;
     const meme = memes[Math.floor(Math.random() * memes.length)];
     setImg(meme.url);
-    draw(meme.url);
   };
 
   const handleGenerate = () => draw(img);
 
-  /* ======================
-     DOWNLOAD
-  ====================== */
   const download = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -158,11 +126,8 @@ export default function MemeApp() {
     link.click();
   };
 
-  /* ======================
-     SAVE
-  ====================== */
   const saveMeme = async () => {
-    if (!user) return alert("Please login first");
+    if (!user?.uid) return alert("Please login first");
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -175,20 +140,14 @@ export default function MemeApp() {
       createdAt: Date.now(),
     });
 
-    loadMemes();
+    loadMemes(user.uid);
   };
 
-  /* ======================
-     DELETE
-  ====================== */
   const deleteMeme = async (id) => {
     await deleteDoc(doc(db, "memes", id));
-    loadMemes();
+    if (user?.uid) loadMemes(user.uid);
   };
 
-  /* ======================
-     DRAG TEXT
-  ====================== */
   const handleMouseMove = (e) => {
     if (!dragging || !canvasRef.current) return;
 
@@ -200,13 +159,19 @@ export default function MemeApp() {
     });
   };
 
-  useEffect(() => {
-    if (img) draw(img);
-  }, [img, draw]);
+  // تابع کمکی برای ساخت آواتار جایگزین
+  const getAvatarUrl = () => {
+    if (user && user.photoURL) {
+      return user.photoURL;
+    }
+    const name = user?.displayName || "User";
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=128`;
+  };
+
+  if (loading) return <h2>Loading...</h2>;
 
   return (
     <div className={dark ? "app dark" : "app"}>
-      {/* NAVBAR */}
       <div className="navbar">
         <div className="logo">Meme App</div>
 
@@ -218,21 +183,22 @@ export default function MemeApp() {
 
       <h1>Meme Generator PRO</h1>
 
-      {/* AUTH */}
+      {/* AUTH - FIXED AVATAR */}
       <div className="user-box">
         {user ? (
           <>
             <img
               className="avatar"
-              src={
-                user.photoURL ||
-                `https://ui-avatars.com/api/?name=${user.displayName}`
-              }
+              src={getAvatarUrl()}
               alt="avatar"
+              onError={(e) => {
+                // اگر عکس گوگل با خطا مواجه شد، عکس جایگزین را جایگذاری کن
+                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || "U")}&background=0D8ABC&color=fff`;
+              }}
             />
 
             <div>
-              <div>{user.displayName}</div>
+              <div style={{ fontWeight: "bold" }}>{user.displayName}</div>
               <small>{user.email}</small>
             </div>
 
@@ -248,6 +214,7 @@ export default function MemeApp() {
       {/* INPUTS */}
       <div>
         <input
+          id="topText"
           name="topText"
           placeholder="Top text"
           value={topText}
@@ -255,6 +222,7 @@ export default function MemeApp() {
         />
 
         <input
+          id="bottomText"
           name="bottomText"
           placeholder="Bottom text"
           value={bottomText}
@@ -262,9 +230,9 @@ export default function MemeApp() {
         />
       </div>
 
-      {/* STYLE */}
       <div>
         <select
+          id="fontFamily"
           name="fontFamily"
           value={fontFamily}
           onChange={(e) => setFontFamily(e.target.value)}
@@ -274,6 +242,7 @@ export default function MemeApp() {
         </select>
 
         <input
+          id="fontColor"
           name="fontColor"
           type="color"
           value={fontColor}
@@ -281,6 +250,7 @@ export default function MemeApp() {
         />
 
         <input
+          id="fontSize"
           name="fontSize"
           type="range"
           min="10"
@@ -290,7 +260,6 @@ export default function MemeApp() {
         />
       </div>
 
-      {/* ACTIONS */}
       <div>
         <button onClick={randomMeme}>Random</button>
         <button onClick={handleGenerate}>Generate</button>
@@ -298,7 +267,6 @@ export default function MemeApp() {
         <button onClick={saveMeme}>Save</button>
       </div>
 
-      {/* CANVAS */}
       <canvas
         ref={canvasRef}
         width="500"
@@ -306,9 +274,9 @@ export default function MemeApp() {
         onMouseDown={() => setDragging(true)}
         onMouseUp={() => setDragging(false)}
         onMouseMove={handleMouseMove}
+        style={{ border: "1px solid #ccc", marginTop: "10px" }}
       />
 
-      {/* GALLERY */}
       <h2>Cloud Gallery</h2>
 
       <div className="gallery">
