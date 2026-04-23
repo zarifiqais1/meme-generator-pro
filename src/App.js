@@ -88,9 +88,9 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    // افزودن auth به وابستگی‌ها برای جلوگیری از خطای ESLint در Vercel
+    // استفاده از متد استاندارد برای چک کردن وضعیت کاربر
     const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+      setUser(u || null);
       setLoading(false);
       setAuthReady(true);
     });
@@ -128,6 +128,7 @@ export default function App() {
   );
 }
 
+// استایل‌ها بدون تغییر باقی ماندند
 const styles = {
   loginContainer: {
     height: "100vh",

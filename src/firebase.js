@@ -2,7 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithRedirect, // تغییر به Redirect برای حل مشکل مرورگر و Vercel
+  signInWithPopup,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -45,15 +45,19 @@ provider.setCustomParameters({
 });
 
 /* ======================
-   LOGIN (REDIRECT)
+   LOGIN (POPUP)
 ====================== */
 export const loginWithGoogle = async () => {
   try {
-    // استفاده از Redirect به جای Popup برای پایداری در Vercel و موبایل
-    await signInWithRedirect(auth, provider);
+    // برگشت به حالت پاپ‌آپ برای جلوگیری از ریست شدن اپلیکیشن
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
   } catch (error) {
     console.error("Login error:", error);
-    throw error;
+    // جلوگیری از ارور در صورت بستن ناگهانی پنجره توسط کاربر
+    if (error.code !== "auth/cancelled-popup-request") {
+      throw error;
+    }
   }
 };
 

@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 import { auth, loginWithGoogle, logout, db } from "./firebase";
-import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 export default function MemeApp() {
@@ -41,7 +41,7 @@ export default function MemeApp() {
   const canvasRef = useRef(null);
   const galleryRef = useRef(null);
 
-  /* DRAWING LOGIC - MOVED UP TO PREVENT ESLINT ERRORS */
+  /* DRAWING LOGIC */
   const draw = useCallback(
     (imageSrc, attempt = 0) => {
       return new Promise((resolve, reject) => {
@@ -97,18 +97,8 @@ export default function MemeApp() {
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
-  /* AUTH LISTENER & REDIRECT HANDLER */
+  /* AUTH LISTENER */
   useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          setUser(result.user);
-        }
-      })
-      .catch((error) => {
-        console.error("Redirect Login Error:", error);
-      });
-
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u || null);
       setLoading(false);
@@ -129,8 +119,7 @@ export default function MemeApp() {
         }
       })
       .catch(console.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draw]);
+  }, [draw, img]);
 
   /* LOAD GALLERY FROM FIRESTORE */
   const loadMemes = useCallback(async (uid) => {
