@@ -57,14 +57,14 @@ export default function MemeApp() {
       .then((data) => {
         const memeData = data?.data?.memes || [];
         setMemes(memeData);
+
         if (memeData.length > 0 && !img) {
           setImg(memeData[0].url);
-          // Initial load of default meme
           setTimeout(() => draw(memeData[0].url), 200);
         }
       })
       .catch(console.error);
-  }, []);
+  }, [img, draw]);
 
   /* LOAD GALLERY FROM FIRESTORE */
   const loadMemes = useCallback(async (uid) => {
@@ -78,7 +78,7 @@ export default function MemeApp() {
     if (user?.uid) loadMemes(user.uid);
   }, [user, loadMemes]);
 
-  /* DRAWING LOGIC - HYBRID LOADING FOR SPEED & COMPATIBILITY */
+  /* DRAWING LOGIC */
   const draw = useCallback(
     (imageSrc, useProxy = false) => {
       return new Promise((resolve, reject) => {
@@ -87,7 +87,6 @@ export default function MemeApp() {
         const ctx = canvas.getContext("2d");
         const image = new Image();
 
-        // Try direct load first (fast), use Proxy only if needed (for CORS links like Google)
         const finalUrl = useProxy
           ? `https://api.allorigins.win/raw?url=${encodeURIComponent(imageSrc)}`
           : imageSrc;
@@ -113,7 +112,6 @@ export default function MemeApp() {
         };
 
         image.onerror = () => {
-          // If direct load fails, retry automatically with proxy
           if (!useProxy) {
             draw(imageSrc, true).then(resolve).catch(reject);
           } else {
@@ -125,12 +123,12 @@ export default function MemeApp() {
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
-  /* LIVE TEXT UPDATE ON LOADED IMAGE */
+  /* LIVE TEXT UPDATE */
   useEffect(() => {
     if (img && canvasRef.current) {
       draw(img).catch(() => {});
     }
-  }, [topText, bottomText, fontSize, fontColor, fontFamily, pos, draw]);
+  }, [img, topText, bottomText, fontSize, fontColor, fontFamily, pos, draw]);
 
   const randomMeme = () => {
     if (!memes.length) return;
@@ -148,7 +146,6 @@ export default function MemeApp() {
     link.click();
   };
 
-  /* SEARCH/LOAD BUTTON - TRIGGER LOADING MANUALLY */
   const handleLoadImage = (e) => {
     if (e) e.preventDefault();
     if (!img) return alert("Please paste a URL first");
@@ -157,7 +154,6 @@ export default function MemeApp() {
     );
   };
 
-  /* SAVE TO FIRESTORE */
   const handleSaveMeme = async () => {
     if (!user?.uid) return alert("Please login first to save memes");
     const canvas = canvasRef.current;
