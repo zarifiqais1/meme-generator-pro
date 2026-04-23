@@ -22,7 +22,8 @@ export default function MemeApp() {
   const [loading, setLoading] = useState(true);
 
   const [memes, setMemes] = useState([]);
-  const [img, setImg] = useState("");
+  const [imgInput, setImgInput] = useState("");
+  const [currentImg, setCurrentImg] = useState("");
 
   const [topText, setTopText] = useState("");
   const [bottomText, setBottomText] = useState("");
@@ -113,13 +114,13 @@ export default function MemeApp() {
       .then((data) => {
         const memeData = data?.data?.memes || [];
         setMemes(memeData);
-        if (memeData.length > 0 && !img) {
-          setImg(memeData[0].url);
-          setTimeout(() => draw(memeData[0].url), 200);
+        if (memeData.length > 0 && !currentImg) {
+          setImgInput(memeData[0].url);
+          setCurrentImg(memeData[0].url);
         }
       })
       .catch(console.error);
-  }, [draw, img]);
+  }, [currentImg]);
 
   /* LOAD GALLERY FROM FIRESTORE */
   const loadMemes = useCallback(async (uid) => {
@@ -133,18 +134,24 @@ export default function MemeApp() {
     if (user?.uid) loadMemes(user.uid);
   }, [user, loadMemes]);
 
-  /* LIVE TEXT UPDATE ON LOADED IMAGE */
+  /* LIVE UPDATE ON CURRENT IMAGE */
   useEffect(() => {
-    if (img && canvasRef.current) {
-      draw(img).catch(() => {});
+    if (currentImg && canvasRef.current) {
+      draw(currentImg).catch(() => {});
     }
-  }, [img, draw]);
+  }, [currentImg, draw]);
+
+  const handleLoadImage = (e) => {
+    if (e) e.preventDefault();
+    if (!imgInput) return alert("Please paste a URL first");
+    setCurrentImg(imgInput);
+  };
 
   const randomMeme = () => {
     if (!memes.length) return;
     const meme = memes[Math.floor(Math.random() * memes.length)];
-    setImg(meme.url);
-    draw(meme.url).catch(() => {});
+    setImgInput(meme.url);
+    setCurrentImg(meme.url);
   };
 
   const download = () => {
@@ -154,14 +161,6 @@ export default function MemeApp() {
     link.download = "meme.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
-  };
-
-  const handleLoadImage = (e) => {
-    if (e) e.preventDefault();
-    if (!img) return alert("Please paste a URL first");
-    draw(img).catch(() =>
-      alert("Error: This image host is strictly protected. Try another link."),
-    );
   };
 
   const handleSaveMeme = async () => {
@@ -261,9 +260,9 @@ export default function MemeApp() {
             <input
               id="imgUrl"
               name="imgUrl"
-              placeholder="Paste ANY Image URL here..."
-              value={img}
-              onChange={(e) => setImg(e.target.value)}
+              placeholder="Paste ANY Image URL here (JPG, PNG, WEBP)..."
+              value={imgInput}
+              onChange={(e) => setImgInput(e.target.value)}
             />
           </div>
 
@@ -300,7 +299,7 @@ export default function MemeApp() {
               Random Image
             </button>
             <button type="submit" className="primary-btn">
-              Add Meme (Search)
+              Add Meme
             </button>
             <button
               type="button"
