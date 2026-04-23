@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 import { auth, loginWithGoogle, logout, db } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, getRedirectResult } from "firebase/auth"; // Added getRedirectResult
 import { useNavigate } from "react-router-dom";
 
 export default function MemeApp() {
@@ -41,8 +41,19 @@ export default function MemeApp() {
   const canvasRef = useRef(null);
   const galleryRef = useRef(null);
 
-  /* AUTH LISTENER */
+  /* AUTH LISTENER & REDIRECT HANDLER */
   useEffect(() => {
+    // Check for result from redirect login
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect Login Error:", error);
+      });
+
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u || null);
       setLoading(false);
@@ -57,14 +68,14 @@ export default function MemeApp() {
       .then((data) => {
         const memeData = data?.data?.memes || [];
         setMemes(memeData);
-
         if (memeData.length > 0 && !img) {
           setImg(memeData[0].url);
+          // Initial load of default meme
           setTimeout(() => draw(memeData[0].url), 200);
         }
       })
       .catch(console.error);
-  }, [img, draw]);
+  }, []);
 
   /* LOAD GALLERY FROM FIRESTORE */
   const loadMemes = useCallback(async (uid) => {
@@ -78,18 +89,29 @@ export default function MemeApp() {
     if (user?.uid) loadMemes(user.uid);
   }, [user, loadMemes]);
 
-  /* DRAWING LOGIC */
+  /* DRAWING LOGIC - FIXED FOR CORS AND ACCESSIBILITY */
   const draw = useCallback(
-    (imageSrc, useProxy = false) => {
+    (imageSrc, attempt = 0) => {
       return new Promise((resolve, reject) => {
         if (!imageSrc || !canvasRef.current) return reject("No source");
         const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");
         const image = new Image();
 
-        const finalUrl = useProxy
-          ? `https://api.allorigins.win/raw?url=${encodeURIComponent(imageSrc)}`
-          : imageSrc;
+        // Use timestamps to bypass browser cache and avoid repeated CORS errors
+        const cacheBuster = imageSrc.includes("?")
+          ? `&t=${Date.now()}`
+          : `?t=${Date.now()}`;
+        const cleanSrc = imageSrc + cacheBuster;
+
+        let finalUrl = cleanSrc;
+
+        // Multi-level fallback to bypass CORS
+        if (attempt === 1) {
+          finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(cleanSrc)}`;
+        } else if (attempt === 2) {
+          finalUrl = `https://corsproxy.io/?${encodeURIComponent(cleanSrc)}`;
+        }
 
         image.crossOrigin = "anonymous";
         image.src = finalUrl;
@@ -112,10 +134,13 @@ export default function MemeApp() {
         };
 
         image.onerror = () => {
-          if (!useProxy) {
-            draw(imageSrc, true).then(resolve).catch(reject);
+          if (attempt < 2) {
+            // Automatically retry with a different proxy if it fails
+            draw(imageSrc, attempt + 1)
+              .then(resolve)
+              .catch(reject);
           } else {
-            reject("Image load failed");
+            reject("Image load failed after multiple attempts.");
           }
         };
       });
@@ -123,12 +148,12 @@ export default function MemeApp() {
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
-  /* LIVE TEXT UPDATE */
+  /* LIVE TEXT UPDATE ON LOADED IMAGE */
   useEffect(() => {
     if (img && canvasRef.current) {
       draw(img).catch(() => {});
     }
-  }, [img, topText, bottomText, fontSize, fontColor, fontFamily, pos, draw]);
+  }, [topText, bottomText, fontSize, fontColor, fontFamily, pos, draw]);
 
   const randomMeme = () => {
     if (!memes.length) return;
@@ -146,14 +171,16 @@ export default function MemeApp() {
     link.click();
   };
 
+  /* SEARCH/LOAD BUTTON - TRIGGER LOADING MANUALLY */
   const handleLoadImage = (e) => {
     if (e) e.preventDefault();
     if (!img) return alert("Please paste a URL first");
     draw(img).catch(() =>
-      alert("Error: Still cannot load this image. Try another link."),
+      alert("Error: This image host is strictly protected. Try another link."),
     );
   };
 
+  /* SAVE TO FIRESTORE */
   const handleSaveMeme = async () => {
     if (!user?.uid) return alert("Please login first to save memes");
     const canvas = canvasRef.current;
@@ -294,7 +321,6 @@ export default function MemeApp() {
             </button>
             <button
               type="button"
-              className="save-btn"
               onClick={handleSaveMeme}
               style={{ backgroundColor: "#28a745", color: "white" }}
             >
