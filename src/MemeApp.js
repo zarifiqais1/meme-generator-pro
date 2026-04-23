@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 import { auth, loginWithGoogle, logout, db } from "./firebase";
-import { onAuthStateChanged, getRedirectResult } from "firebase/auth"; // Added getRedirectResult
+import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 export default function MemeApp() {
@@ -41,55 +41,7 @@ export default function MemeApp() {
   const canvasRef = useRef(null);
   const galleryRef = useRef(null);
 
-  /* AUTH LISTENER & REDIRECT HANDLER */
-  useEffect(() => {
-    // Check for result from redirect login
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          setUser(result.user);
-        }
-      })
-      .catch((error) => {
-        console.error("Redirect Login Error:", error);
-      });
-
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u || null);
-      setLoading(false);
-    });
-    return () => unsub();
-  }, []);
-
-  /* FETCH MEMES FROM API */
-  useEffect(() => {
-    fetch("https://api.imgflip.com/get_memes")
-      .then((res) => res.json())
-      .then((data) => {
-        const memeData = data?.data?.memes || [];
-        setMemes(memeData);
-        if (memeData.length > 0 && !img) {
-          setImg(memeData[0].url);
-          // Initial load of default meme
-          setTimeout(() => draw(memeData[0].url), 200);
-        }
-      })
-      .catch(console.error);
-  }, []);
-
-  /* LOAD GALLERY FROM FIRESTORE */
-  const loadMemes = useCallback(async (uid) => {
-    if (!uid) return;
-    const q = query(collection(db, "memes"), where("userId", "==", uid));
-    const snapshot = await getDocs(q);
-    setGallery(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
-  }, []);
-
-  useEffect(() => {
-    if (user?.uid) loadMemes(user.uid);
-  }, [user, loadMemes]);
-
-  /* DRAWING LOGIC - FIXED FOR CORS AND ACCESSIBILITY */
+  /* DRAWING LOGIC - MOVED UP TO PREVENT ESLINT ERRORS */
   const draw = useCallback(
     (imageSrc, attempt = 0) => {
       return new Promise((resolve, reject) => {
@@ -98,7 +50,6 @@ export default function MemeApp() {
         const ctx = canvas.getContext("2d");
         const image = new Image();
 
-        // Use timestamps to bypass browser cache and avoid repeated CORS errors
         const cacheBuster = imageSrc.includes("?")
           ? `&t=${Date.now()}`
           : `?t=${Date.now()}`;
@@ -106,7 +57,6 @@ export default function MemeApp() {
 
         let finalUrl = cleanSrc;
 
-        // Multi-level fallback to bypass CORS
         if (attempt === 1) {
           finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(cleanSrc)}`;
         } else if (attempt === 2) {
@@ -135,12 +85,11 @@ export default function MemeApp() {
 
         image.onerror = () => {
           if (attempt < 2) {
-            // Automatically retry with a different proxy if it fails
             draw(imageSrc, attempt + 1)
               .then(resolve)
               .catch(reject);
           } else {
-            reject("Image load failed after multiple attempts.");
+            reject("Image load failed");
           }
         };
       });
@@ -148,12 +97,59 @@ export default function MemeApp() {
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
+  /* AUTH LISTENER & REDIRECT HANDLER */
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect Login Error:", error);
+      });
+
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u || null);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  /* FETCH MEMES FROM API */
+  useEffect(() => {
+    fetch("https://api.imgflip.com/get_memes")
+      .then((res) => res.json())
+      .then((data) => {
+        const memeData = data?.data?.memes || [];
+        setMemes(memeData);
+        if (memeData.length > 0 && !img) {
+          setImg(memeData[0].url);
+          setTimeout(() => draw(memeData[0].url), 200);
+        }
+      })
+      .catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draw]);
+
+  /* LOAD GALLERY FROM FIRESTORE */
+  const loadMemes = useCallback(async (uid) => {
+    if (!uid) return;
+    const q = query(collection(db, "memes"), where("userId", "==", uid));
+    const snapshot = await getDocs(q);
+    setGallery(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+  }, []);
+
+  useEffect(() => {
+    if (user?.uid) loadMemes(user.uid);
+  }, [user, loadMemes]);
+
   /* LIVE TEXT UPDATE ON LOADED IMAGE */
   useEffect(() => {
     if (img && canvasRef.current) {
       draw(img).catch(() => {});
     }
-  }, [topText, bottomText, fontSize, fontColor, fontFamily, pos, draw]);
+  }, [img, draw]);
 
   const randomMeme = () => {
     if (!memes.length) return;
@@ -171,7 +167,6 @@ export default function MemeApp() {
     link.click();
   };
 
-  /* SEARCH/LOAD BUTTON - TRIGGER LOADING MANUALLY */
   const handleLoadImage = (e) => {
     if (e) e.preventDefault();
     if (!img) return alert("Please paste a URL first");
@@ -180,7 +175,6 @@ export default function MemeApp() {
     );
   };
 
-  /* SAVE TO FIRESTORE */
   const handleSaveMeme = async () => {
     if (!user?.uid) return alert("Please login first to save memes");
     const canvas = canvasRef.current;

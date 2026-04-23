@@ -19,7 +19,6 @@ function Login({ user, loading }) {
 
   return (
     <div style={styles.loginContainer}>
-      {/* تزریق انیمیشن به صفحه */}
       <style>
         {`
           @keyframes fadeInUp {
@@ -89,6 +88,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
+    // افزودن auth به وابستگی‌ها برای جلوگیری از خطای ESLint در Vercel
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -128,7 +128,6 @@ export default function App() {
   );
 }
 
-// استایل‌های لوکس و مدرن
 const styles = {
   loginContainer: {
     height: "100vh",

@@ -2,7 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect, // تغییر به Redirect برای حل مشکل مرورگر و Vercel
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -45,12 +45,12 @@ provider.setCustomParameters({
 });
 
 /* ======================
-   LOGIN (POPUP)
+   LOGIN (REDIRECT)
 ====================== */
 export const loginWithGoogle = async () => {
   try {
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
+    // استفاده از Redirect به جای Popup برای پایداری در Vercel و موبایل
+    await signInWithRedirect(auth, provider);
   } catch (error) {
     console.error("Login error:", error);
     throw error;
