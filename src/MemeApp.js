@@ -78,29 +78,19 @@ export default function MemeApp() {
     if (user?.uid) loadMemes(user.uid);
   }, [user, loadMemes]);
 
-  /* DRAWING LOGIC - FIXED FOR CORS AND ACCESSIBILITY */
+  /* DRAWING LOGIC - HYBRID LOADING FOR SPEED & COMPATIBILITY */
   const draw = useCallback(
-    (imageSrc, attempt = 0) => {
+    (imageSrc, useProxy = false) => {
       return new Promise((resolve, reject) => {
         if (!imageSrc || !canvasRef.current) return reject("No source");
         const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");
         const image = new Image();
 
-        // Use timestamps to bypass browser cache and avoid repeated CORS errors
-        const cacheBuster = imageSrc.includes("?")
-          ? `&t=${Date.now()}`
-          : `?t=${Date.now()}`;
-        const cleanSrc = imageSrc + cacheBuster;
-
-        let finalUrl = cleanSrc;
-
-        // Multi-level fallback to bypass CORS
-        if (attempt === 1) {
-          finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(cleanSrc)}`;
-        } else if (attempt === 2) {
-          finalUrl = `https://corsproxy.io/?${encodeURIComponent(cleanSrc)}`;
-        }
+        // Try direct load first (fast), use Proxy only if needed (for CORS links like Google)
+        const finalUrl = useProxy
+          ? `https://api.allorigins.win/raw?url=${encodeURIComponent(imageSrc)}`
+          : imageSrc;
 
         image.crossOrigin = "anonymous";
         image.src = finalUrl;
@@ -123,13 +113,11 @@ export default function MemeApp() {
         };
 
         image.onerror = () => {
-          if (attempt < 2) {
-            // Automatically retry with a different proxy if it fails
-            draw(imageSrc, attempt + 1)
-              .then(resolve)
-              .catch(reject);
+          // If direct load fails, retry automatically with proxy
+          if (!useProxy) {
+            draw(imageSrc, true).then(resolve).catch(reject);
           } else {
-            reject("Image load failed after multiple attempts.");
+            reject("Image load failed");
           }
         };
       });
@@ -165,7 +153,7 @@ export default function MemeApp() {
     if (e) e.preventDefault();
     if (!img) return alert("Please paste a URL first");
     draw(img).catch(() =>
-      alert("Error: This image host is strictly protected. Try another link."),
+      alert("Error: Still cannot load this image. Try another link."),
     );
   };
 
@@ -310,6 +298,7 @@ export default function MemeApp() {
             </button>
             <button
               type="button"
+              className="save-btn"
               onClick={handleSaveMeme}
               style={{ backgroundColor: "#28a745", color: "white" }}
             >
