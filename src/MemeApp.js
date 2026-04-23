@@ -39,32 +39,38 @@ export default function MemeApp() {
   const [gallery, setGallery] = useState([]);
 
   const canvasRef = useRef(null);
+  const galleryRef = useRef(null);
 
-  /* AUTH */
+  /* AUTH LISTENER */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u || null);
       setLoading(false);
     });
-
     return () => unsub();
   }, []);
 
-  /* MEME API */
+  /* FETCH MEMES FROM API */
   useEffect(() => {
     fetch("https://api.imgflip.com/get_memes")
       .then((res) => res.json())
-      .then((data) => setMemes(data?.data?.memes || []))
+      .then((data) => {
+        const memeData = data?.data?.memes || [];
+        setMemes(memeData);
+        if (memeData.length > 0 && !img) {
+          setImg(memeData[0].url);
+          // Initial load of default meme
+          setTimeout(() => draw(memeData[0].url), 200);
+        }
+      })
       .catch(console.error);
   }, []);
 
-  /* LOAD MEMES */
+  /* LOAD GALLERY FROM FIRESTORE */
   const loadMemes = useCallback(async (uid) => {
     if (!uid) return;
-
     const q = query(collection(db, "memes"), where("userId", "==", uid));
     const snapshot = await getDocs(q);
-
     setGallery(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
   }, []);
 
@@ -72,75 +78,116 @@ export default function MemeApp() {
     if (user?.uid) loadMemes(user.uid);
   }, [user, loadMemes]);
 
-  /* DRAW */
+  /* DRAWING LOGIC - FIXED FOR CORS AND ACCESSIBILITY */
   const draw = useCallback(
-    (imageSrc) => {
-      if (!imageSrc || !canvasRef.current) return;
+    (imageSrc, attempt = 0) => {
+      return new Promise((resolve, reject) => {
+        if (!imageSrc || !canvasRef.current) return reject("No source");
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        const image = new Image();
 
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
+        // Use timestamps to bypass browser cache and avoid repeated CORS errors
+        const cacheBuster = imageSrc.includes("?")
+          ? `&t=${Date.now()}`
+          : `?t=${Date.now()}`;
+        const cleanSrc = imageSrc + cacheBuster;
 
-      const image = new Image();
-      image.crossOrigin = "anonymous";
-      image.src = imageSrc;
+        let finalUrl = cleanSrc;
 
-      image.onload = () => {
-        ctx.clearRect(0, 0, 500, 500);
-        ctx.drawImage(image, 0, 0, 500, 500);
+        // Multi-level fallback to bypass CORS
+        if (attempt === 1) {
+          finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(cleanSrc)}`;
+        } else if (attempt === 2) {
+          finalUrl = `https://corsproxy.io/?${encodeURIComponent(cleanSrc)}`;
+        }
 
-        ctx.fillStyle = fontColor;
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 3;
-        ctx.textAlign = "center";
-        ctx.font = `${fontSize}px ${fontFamily}`;
+        image.crossOrigin = "anonymous";
+        image.src = finalUrl;
 
-        ctx.fillText(topText, 250, 50);
-        ctx.strokeText(topText, 250, 50);
+        image.onload = () => {
+          ctx.clearRect(0, 0, 500, 500);
+          ctx.drawImage(image, 0, 0, 500, 500);
+          ctx.fillStyle = fontColor;
+          ctx.strokeStyle = "black";
+          ctx.lineWidth = 3;
+          ctx.textAlign = "center";
+          ctx.font = `${fontSize}px ${fontFamily}`;
 
-        ctx.fillText(bottomText, pos.x, pos.y);
-        ctx.strokeText(bottomText, pos.x, pos.y);
-      };
+          ctx.fillText(topText, 250, 50);
+          ctx.strokeText(topText, 250, 50);
+
+          ctx.fillText(bottomText, pos.x, pos.y);
+          ctx.strokeText(bottomText, pos.x, pos.y);
+          resolve();
+        };
+
+        image.onerror = () => {
+          if (attempt < 2) {
+            // Automatically retry with a different proxy if it fails
+            draw(imageSrc, attempt + 1)
+              .then(resolve)
+              .catch(reject);
+          } else {
+            reject("Image load failed after multiple attempts.");
+          }
+        };
+      });
     },
     [topText, bottomText, fontSize, fontColor, fontFamily, pos],
   );
 
+  /* LIVE TEXT UPDATE ON LOADED IMAGE */
   useEffect(() => {
-    if (img) draw(img);
-  }, [img, draw]);
+    if (img && canvasRef.current) {
+      draw(img).catch(() => {});
+    }
+  }, [topText, bottomText, fontSize, fontColor, fontFamily, pos, draw]);
 
   const randomMeme = () => {
     if (!memes.length) return;
     const meme = memes[Math.floor(Math.random() * memes.length)];
     setImg(meme.url);
+    draw(meme.url).catch(() => {});
   };
-
-  const handleGenerate = () => draw(img);
 
   const download = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const link = document.createElement("a");
     link.download = "meme.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
   };
 
-  const saveMeme = async () => {
-    if (!user?.uid) return alert("Please login first");
+  /* SEARCH/LOAD BUTTON - TRIGGER LOADING MANUALLY */
+  const handleLoadImage = (e) => {
+    if (e) e.preventDefault();
+    if (!img) return alert("Please paste a URL first");
+    draw(img).catch(() =>
+      alert("Error: This image host is strictly protected. Try another link."),
+    );
+  };
 
+  /* SAVE TO FIRESTORE */
+  const handleSaveMeme = async () => {
+    if (!user?.uid) return alert("Please login first to save memes");
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const data = canvas.toDataURL("image/png");
+    try {
+      const data = canvas.toDataURL("image/png");
+      await addDoc(collection(db, "memes"), {
+        img: data,
+        userId: user.uid,
+        createdAt: Date.now(),
+      });
 
-    await addDoc(collection(db, "memes"), {
-      img: data,
-      userId: user.uid,
-      createdAt: Date.now(),
-    });
-
-    loadMemes(user.uid);
+      await loadMemes(user.uid);
+      galleryRef.current?.scrollIntoView({ behavior: "smooth" });
+    } catch (err) {
+      alert("Error saving meme to gallery.");
+    }
   };
 
   const deleteMeme = async (id) => {
@@ -150,142 +197,162 @@ export default function MemeApp() {
 
   const handleMouseMove = (e) => {
     if (!dragging || !canvasRef.current) return;
-
     const rect = canvasRef.current.getBoundingClientRect();
-
     setPos({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     });
   };
 
-  // تابع کمکی برای ساخت آواتار جایگزین
-  const getAvatarUrl = () => {
-    if (user && user.photoURL) {
-      return user.photoURL;
-    }
-    const name = user?.displayName || "User";
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=128`;
-  };
-
-  if (loading) return <h2>Loading...</h2>;
+  if (loading)
+    return (
+      <div className="loading">
+        <h2>Loading App...</h2>
+      </div>
+    );
 
   return (
     <div className={dark ? "app dark" : "app"}>
-      <div className="navbar">
+      <nav className="navbar">
         <div className="logo">Meme App</div>
-
         <div className="nav-links">
           <button onClick={() => navigate("/")}>Home</button>
           <button onClick={() => navigate("/profile")}>Profile</button>
         </div>
-      </div>
+      </nav>
 
-      <h1>Meme Generator PRO</h1>
+      <div className="main-content">
+        <h1>Meme Generator PRO</h1>
 
-      {/* AUTH - FIXED AVATAR */}
-      <div className="user-box">
-        {user ? (
-          <>
-            <img
-              className="avatar"
-              src={getAvatarUrl()}
-              alt="avatar"
-              onError={(e) => {
-                // اگر عکس گوگل با خطا مواجه شد، عکس جایگزین را جایگذاری کن
-                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || "U")}&background=0D8ABC&color=fff`;
-              }}
-            />
-
-            <div>
-              <div style={{ fontWeight: "bold" }}>{user.displayName}</div>
-              <small>{user.email}</small>
+        <div className="user-box">
+          {user ? (
+            <div className="user-info-mini">
+              <img className="avatar" src={user.photoURL || ""} alt="avatar" />
+              <div>
+                <strong>{user.displayName}</strong>
+                <button className="logout-btn-text" onClick={logout}>
+                  Logout
+                </button>
+              </div>
             </div>
+          ) : (
+            <button className="login-btn-small" onClick={loginWithGoogle}>
+              Login with Google
+            </button>
+          )}
+        </div>
 
-            <button onClick={logout}>Logout</button>
-          </>
-        ) : (
-          <button onClick={loginWithGoogle}>Login with Google</button>
-        )}
-      </div>
+        <button className="theme-toggle" onClick={() => setDark(!dark)}>
+          {dark ? "☀️ Light Mode" : "🌙 Dark Mode"}
+        </button>
 
-      <button onClick={() => setDark(!dark)}>Toggle Dark Mode</button>
-
-      {/* INPUTS */}
-      <div>
-        <input
-          id="topText"
-          name="topText"
-          placeholder="Top text"
-          value={topText}
-          onChange={(e) => setTopText(e.target.value)}
-        />
-
-        <input
-          id="bottomText"
-          name="bottomText"
-          placeholder="Bottom text"
-          value={bottomText}
-          onChange={(e) => setBottomText(e.target.value)}
-        />
-      </div>
-
-      <div>
-        <select
-          id="fontFamily"
-          name="fontFamily"
-          value={fontFamily}
-          onChange={(e) => setFontFamily(e.target.value)}
-        >
-          <option value="Impact">Impact</option>
-          <option value="Arial">Arial</option>
-        </select>
-
-        <input
-          id="fontColor"
-          name="fontColor"
-          type="color"
-          value={fontColor}
-          onChange={(e) => setFontColor(e.target.value)}
-        />
-
-        <input
-          id="fontSize"
-          name="fontSize"
-          type="range"
-          min="10"
-          max="60"
-          value={fontSize}
-          onChange={(e) => setFontSize(Number(e.target.value))}
-        />
-      </div>
-
-      <div>
-        <button onClick={randomMeme}>Random</button>
-        <button onClick={handleGenerate}>Generate</button>
-        <button onClick={download}>Download</button>
-        <button onClick={saveMeme}>Save</button>
-      </div>
-
-      <canvas
-        ref={canvasRef}
-        width="500"
-        height="500"
-        onMouseDown={() => setDragging(true)}
-        onMouseUp={() => setDragging(false)}
-        onMouseMove={handleMouseMove}
-        style={{ border: "1px solid #ccc", marginTop: "10px" }}
-      />
-
-      <h2>Cloud Gallery</h2>
-
-      <div className="gallery">
-        {gallery.map((item) => (
-          <div key={item.id} className="card">
-            <img src={item.img} width="120" alt="meme" />
-            <button onClick={() => deleteMeme(item.id)}>Delete</button>
+        <form className="meme-form" onSubmit={handleLoadImage}>
+          <div className="inputs-container">
+            <input
+              id="topText"
+              name="topText"
+              required
+              placeholder="Top Text"
+              value={topText}
+              onChange={(e) => setTopText(e.target.value)}
+            />
+            <input
+              id="bottomText"
+              name="bottomText"
+              required
+              placeholder="Bottom Text"
+              value={bottomText}
+              onChange={(e) => setBottomText(e.target.value)}
+            />
+            <input
+              id="imgUrl"
+              name="imgUrl"
+              placeholder="Paste ANY Image URL here..."
+              value={img}
+              onChange={(e) => setImg(e.target.value)}
+            />
           </div>
-        ))}
+
+          <div className="settings-container">
+            <select
+              id="fontFamily"
+              name="fontFamily"
+              value={fontFamily}
+              onChange={(e) => setFontFamily(e.target.value)}
+            >
+              <option value="Impact">Impact</option>
+              <option value="Arial">Arial</option>
+            </select>
+            <input
+              id="fontColor"
+              name="fontColor"
+              type="color"
+              value={fontColor}
+              onChange={(e) => setFontColor(e.target.value)}
+            />
+            <input
+              id="fontSize"
+              name="fontSize"
+              type="range"
+              min="10"
+              max="70"
+              value={fontSize}
+              onChange={(e) => setFontSize(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="buttons-container">
+            <button type="button" onClick={randomMeme}>
+              Random Image
+            </button>
+            <button type="submit" className="primary-btn">
+              Add Meme (Search)
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveMeme}
+              style={{ backgroundColor: "#28a745", color: "white" }}
+            >
+              Save to Cloud
+            </button>
+            <button type="button" onClick={download}>
+              Download
+            </button>
+          </div>
+        </form>
+
+        <div className="canvas-wrapper">
+          <canvas
+            ref={canvasRef}
+            width="500"
+            height="500"
+            onMouseDown={() => setDragging(true)}
+            onMouseUp={() => setDragging(false)}
+            onMouseMove={handleMouseMove}
+            style={{
+              cursor: dragging ? "grabbing" : "crosshair",
+              border: "1px solid #ccc",
+            }}
+          />
+        </div>
+
+        <h2 ref={galleryRef}>Cloud Gallery</h2>
+        <div className="gallery-container">
+          {gallery.length > 0 ? (
+            gallery.map((item) => (
+              <div
+                key={item.id}
+                className="gallery-item"
+                onClick={() => deleteMeme(item.id)}
+              >
+                <img src={item.img} alt="meme" />
+                <div className="delete-hint">✕ Click to Delete</div>
+              </div>
+            ))
+          ) : (
+            <p>Your collection is empty.</p>
+          )}
+        </div>
       </div>
     </div>
   );
