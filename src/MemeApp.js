@@ -220,7 +220,15 @@ export default function MemeApp() {
         <div className="user-box">
           {user ? (
             <div className="user-info-mini">
-              <img className="avatar" src={user.photoURL || ""} alt="avatar" />
+              <img
+                className="avatar"
+                src={
+                  user.photoURL ||
+                  "https://ui-avatars.com/api/?name=" + user.displayName
+                }
+                alt="profile"
+                referrerPolicy="no-referrer"
+              />
               <div>
                 <strong>{user.displayName}</strong>
                 <button className="logout-btn-text" onClick={logout}>
